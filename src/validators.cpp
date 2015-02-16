@@ -69,7 +69,7 @@ void IntValidator::OnChar(wxKeyEvent& event) {
 	auto ctrl = static_cast<wxTextCtrl *>(GetWindow());
 	auto str = new_value(ctrl, chr);
 	int parsed;
-	if (allow_negative && str == '-')
+	if (allow_negative && str == "-")
 		event.Skip();
 	else if (agi::util::try_parse(str, &parsed) && (allow_negative || parsed >= 0))
 		event.Skip();
@@ -121,7 +121,7 @@ void DoubleValidator::OnChar(wxKeyEvent& event) {
 
 	double parsed;
 	bool can_parse = agi::util::try_parse(str, &parsed);
-	if ((min < 0 && str == '-') || str == '.')
+	if ((min < 0 && str == "-") || str == ".")
 		event.Skip();
 	else if (can_parse && parsed >= min && parsed <= max)
 		event.Skip();
@@ -166,6 +166,23 @@ bool DoubleSpinValidator::TransferFromWindow() {
 #endif
 	*value = ctrl->GetValue();
 	return true;
+}
+
+int EnumBinderBase::Get() {
+	if (auto rb = dynamic_cast<wxRadioBox*>(GetWindow()))
+		return rb->GetSelection();
+	if (auto rb = dynamic_cast<wxComboBox*>(GetWindow()))
+		return rb->GetSelection();
+	throw agi::InternalError("Control type not supported by EnumBinder");
+}
+
+void EnumBinderBase::Set(int value) {
+	if (auto rb = dynamic_cast<wxRadioBox*>(GetWindow()))
+		rb->SetSelection(value);
+	else if (auto rb = dynamic_cast<wxComboBox*>(GetWindow()))
+		rb->SetSelection(value);
+	else
+		throw agi::InternalError("Control type not supported by EnumBinder");
 }
 
 bool StringBinder::TransferFromWindow() {

@@ -77,10 +77,7 @@ void push_value(lua_State *L, std::vector<T> const& value) {
 	}
 }
 
-/// Wrap a function which may throw exceptions and make it trigger lua errors
-/// whenever it throws
-template<int (*func)(lua_State *L)>
-int exception_wrapper(lua_State *L) {
+inline int exception_wrapper(lua_State *L, int (*func)(lua_State *L)) {
 	try {
 		return func(L);
 	}
@@ -99,6 +96,13 @@ int exception_wrapper(lua_State *L) {
 	catch (...) {
 		std::terminate();
 	}
+}
+
+/// Wrap a function which may throw exceptions and make it trigger lua errors
+/// whenever it throws
+template<int (*func)(lua_State *L)>
+int exception_wrapper(lua_State *L) {
+	return exception_wrapper(L, func);
 }
 
 template<typename T>
@@ -136,28 +140,6 @@ T& get(lua_State *L, int idx, const char *mt) {
 	return *static_cast<T *>(check_udata(L, idx, mt));
 }
 
-struct LuaForEachBreak {};
-
-template<typename Func>
-void lua_for_each(lua_State *L, Func&& func) {
-	lua_pushnil(L); // initial key
-	while (lua_next(L, -2)) {
-		try {
-			func();
-		}
-		catch (LuaForEachBreak) {
-			lua_pop(L, 1);
-			break;
-		}
-		lua_pop(L, 1); // pop value, leave key
-	}
-	lua_pop(L, 1); // pop table
-}
-
-/// Lua error handler which adds the stack trace to the error message, with
-/// moonscript line rewriting support
-int add_stack_trace(lua_State *L);
-
 #ifdef _DEBUG
 struct LuaStackcheck {
 	lua_State *L;
@@ -176,5 +158,31 @@ struct LuaStackcheck {
 	LuaStackcheck(lua_State*) { }
 };
 #endif
+
+struct LuaForEachBreak {};
+
+template<typename Func>
+void lua_for_each(lua_State *L, Func&& func) {
+	{
+		LuaStackcheck stackcheck(L);
+		lua_pushnil(L); // initial key
+		while (lua_next(L, -2)) {
+			try {
+				func();
+			}
+			catch (LuaForEachBreak) {
+				lua_pop(L, 2); // pop value and key
+				break;
+			}
+			lua_pop(L, 1); // pop value, leave key
+		}
+		stackcheck.check_stack(0);
+	}
+	lua_pop(L, 1); // pop table
+}
+
+/// Lua error handler which adds the stack trace to the error message, with
+/// moonscript line rewriting support
+int add_stack_trace(lua_State *L);
 
 } }

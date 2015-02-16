@@ -27,29 +27,52 @@
 
 #include <wx/dc.h>
 
+void WidthHelper::Age() {
+	for (auto it = begin(widths), e = end(widths); it != e; ) {
+		if (it->second.age == age)
+			++it;
+		else
+			it = widths.erase(it);
+	}
+	++age;
+}
+
 int WidthHelper::operator()(boost::flyweight<std::string> const& str) {
 	if (str.get().empty()) return 0;
 	auto it = widths.find(str);
-	if (it != end(widths)) return it->second;
-	int width = dc.GetTextExtent(to_wx(str)).GetWidth();
-	widths[str] = width;
+	if (it != end(widths)) {
+		it->second.age = age;
+		return it->second.width;
+	}
+
+#ifdef _WIN32
+	wxMBConvUTF8 conv;
+	size_t len = conv.ToWChar(nullptr, 0, str.get().c_str(), str.get().size());
+	scratch.resize(len);
+	conv.ToWChar(const_cast<wchar_t *>(scratch.wx_str()), len, str.get().c_str(), str.get().size());
+	int width = dc->GetTextExtent(scratch).GetWidth();
+#else
+	int width = dc->GetTextExtent(to_wx(str)).GetWidth();
+#endif
+
+	widths[str] = {width, age};
 	return width;
 }
 
 int WidthHelper::operator()(std::string const& str) {
-	return dc.GetTextExtent(to_wx(str)).GetWidth();
+	return dc->GetTextExtent(to_wx(str)).GetWidth();
 }
 
 int WidthHelper::operator()(wxString const& str) {
-	return dc.GetTextExtent(str).GetWidth();
+	return dc->GetTextExtent(str).GetWidth();
 }
 
 int WidthHelper::operator()(const char *str) {
-	return dc.GetTextExtent(wxString::FromUTF8(str)).GetWidth();
+	return dc->GetTextExtent(wxString::FromUTF8(str)).GetWidth();
 }
 
 int WidthHelper::operator()(const wchar_t *str) {
-	return dc.GetTextExtent(str).GetWidth();
+	return dc->GetTextExtent(str).GetWidth();
 }
 
 void GridColumn::UpdateWidth(const agi::Context *c, WidthHelper &helper) {
@@ -215,35 +238,40 @@ struct GridColumnActor final : GridColumn {
 	}
 };
 
-template<int Index>
 struct GridColumnMargin : GridColumn {
+	int index;
+	GridColumnMargin(int index) : index(index) { }
+
 	bool Centered() const override { return true; }
 
 	wxString Value(const AssDialogue *d, const agi::Context *) const override {
-		return d->Margin[Index] ? wxString(std::to_wstring(d->Margin[Index])) : wxString();
+		return d->Margin[index] ? wxString(std::to_wstring(d->Margin[index])) : wxString();
 	}
 
 	int Width(const agi::Context *c, WidthHelper &helper) const override {
 		int max = 0;
 		for (AssDialogue const& line : c->ass->Events) {
-			if (line.Margin[Index] > max)
-				max = line.Margin[Index];
+			if (line.Margin[index] > max)
+				max = line.Margin[index];
 		}
 		return max == 0 ? 0 : helper(std::to_wstring(max));
 	}
 };
 
-struct GridColumnMarginLeft final : GridColumnMargin<0> {
+struct GridColumnMarginLeft final : GridColumnMargin {
+	GridColumnMarginLeft() : GridColumnMargin(0) { }
 	COLUMN_HEADER(_("Left"))
 	COLUMN_DESCRIPTION(_("Left Margin"))
 };
 
-struct GridColumnMarginRight final : GridColumnMargin<1> {
+struct GridColumnMarginRight final : GridColumnMargin {
+	GridColumnMarginRight() : GridColumnMargin(1) { }
 	COLUMN_HEADER(_("Right"))
 	COLUMN_DESCRIPTION(_("Right Margin"))
 };
 
-struct GridColumnMarginVert final : GridColumnMargin<2> {
+struct GridColumnMarginVert final : GridColumnMargin {
+	GridColumnMarginVert() : GridColumnMargin(2) { }
 	COLUMN_HEADER(_("Vert"))
 	COLUMN_DESCRIPTION(_("Vertical Margin"))
 };

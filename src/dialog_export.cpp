@@ -37,10 +37,10 @@
 #include "utils.h"
 
 #include <libaegisub/charset_conv.h>
+#include <libaegisub/split.h>
 
 #include <algorithm>
 #include <boost/filesystem/path.hpp>
-#include <boost/tokenizer.hpp>
 #include <wx/button.h>
 #include <wx/dialog.h>
 #include <wx/checklst.h>
@@ -113,8 +113,7 @@ DialogExport::DialogExport(agi::Context *c)
 
 	// Get selected filters
 	std::string const& selected = c->ass->Properties.export_filters;
-	boost::char_separator<char> sep("|");
-	for (auto const& token : boost::tokenizer<boost::char_separator<char>>(selected, sep)) {
+	for (auto token : agi::Split(selected, '|')) {
 		auto it = find(begin(filters), end(filters), token);
 		if (it != end(filters))
 			filter_list->Check(distance(begin(filters), it));
@@ -186,7 +185,7 @@ DialogExport::~DialogExport() {
 void DialogExport::OnProcess(wxCommandEvent &) {
 	if (!d.TransferDataFromWindow()) return;
 
-	auto filename = SaveFileSelector(_("Export subtitles file"), "", "", "", to_wx(SubtitleFormat::GetWildcards(1)), &d);
+	auto filename = SaveFileSelector(_("Export subtitles file"), "", "", "", SubtitleFormat::GetWildcards(1), &d);
 	if (filename.empty()) return;
 
 	for (size_t i = 0; i < filter_list->GetCount(); ++i) {

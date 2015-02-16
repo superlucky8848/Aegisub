@@ -49,28 +49,28 @@ namespace {
 
 /// @brief Map a user-friendly encoding name to the real encoding name
 	const char *get_real_encoding_name(const char *name) {
-        struct pair { const char *pretty; const char *real; };
-        static pair pretty_names[] = {
+		struct pair { const char *pretty; const char *real; };
+		static pair pretty_names[] = {
 #			define ADD(pretty, real) pair{pretty, real},
 #			include <libaegisub/charsets.def>
 #			undef ADD
-        };
+		};
 
-        static bool init = false;
-        if (!init) {
-            init = true;
-            boost::sort(pretty_names, [](pair a, pair b) {
-                return strcmp(a.pretty, b.pretty) < 0;
-            });
-        }
+		static bool init = false;
+		if (!init) {
+			init = true;
+			boost::sort(pretty_names, [](pair a, pair b) {
+				return strcmp(a.pretty, b.pretty) < 0;
+			});
+		}
 
-        auto enc = boost::lower_bound(pretty_names, name, [](pair a, const char *b) {
+		auto enc = boost::lower_bound(pretty_names, name, [](pair a, const char *b) {
 			return strcmp(a.pretty, b) < 0;
-        });
+		});
 
-        if (enc != std::end(pretty_names) && strcmp(enc->pretty, name) == 0)
-            return enc->real;
-        return name;
+		if (enc != std::end(pretty_names) && strcmp(enc->pretty, name) == 0)
+			return enc->real;
+		return name;
 	}
 
 	size_t get_bom_size(Iconv& cd) {
@@ -321,17 +321,11 @@ void IconvWrapper::Convert(const char *src, size_t srcLen, std::string &dest) {
 
 	if (res == iconv_failed) {
 		switch (errno) {
+			case EILSEQ:
 			case EINVAL:
 				throw BadInput(
 					"One or more characters in the input string were not valid "
 					"characters in the given input encoding");
-			case EILSEQ:
-				throw BadOutput(
-					"One or more characters could not be converted to the "
-					"selected target encoding and the version of iconv "
-					"Aegisub was built with does not have useful fallbacks. "
-					"For best results, please build Aegisub using a recent "
-					"version of GNU iconv.");
 			default:
 				throw ConversionFailure("An unknown conversion failure occurred");
 		}
@@ -352,16 +346,10 @@ size_t IconvWrapper::Convert(const char* source, size_t sourceSize, char *dest, 
 					"Destination buffer was not large enough to fit converted "
 					"string.");
 			case EINVAL:
+			case EILSEQ:
 				throw BadInput(
 					"One or more characters in the input string were not valid "
 					"characters in the given input encoding");
-			case EILSEQ:
-				throw BadOutput(
-					"One or more characters could not be converted to the "
-					"selected target encoding and the version of iconv "
-					"Aegisub was built with does not have useful fallbacks. "
-					"For best results, please build Aegisub using a recent "
-					"version of GNU iconv.");
 			default:
 				throw ConversionFailure("An unknown conversion failure occurred");
 		}
@@ -394,18 +382,12 @@ size_t IconvWrapper::RequiredBufferSize(const char* src, size_t srcLen) {
 	if (res == iconv_failed) {
 		switch (errno) {
 			case EINVAL:
+			case EILSEQ:
 				throw BadInput(
 					"One or more characters in the input string were not valid "
 					"characters in the given input encoding");
-			case EILSEQ:
-				throw BadOutput(
-					"One or more characters could not be converted to the "
-					"selected target encoding and the version of iconv "
-					"Aegisub was built with does not have useful fallbacks. "
-					"For best results, please build Aegisub using a recent "
-					"version of GNU iconv.");
 			default:
-				throw ConversionFailure("An unknown conversion failure occured");
+				throw ConversionFailure("An unknown conversion failure occurred");
 		}
 	}
 	return charsWritten;

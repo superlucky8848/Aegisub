@@ -53,6 +53,37 @@
 #include <wx/dcbuffer.h>
 #include <wx/mousestate.h>
 
+/// @class AudioDisplayInteractionObject
+/// @brief Interface for objects on the audio display that can respond to mouse events
+class AudioDisplayInteractionObject {
+public:
+	/// @brief The user is interacting with the object using the mouse
+	/// @param event Mouse event data
+	/// @return True to take mouse capture, false to release mouse capture
+	///
+	/// Assuming no object has the mouse capture, the audio display uses other methods
+	/// in the object implementing this interface to determine whether a mouse event
+	/// should go to the object. If the mouse event goes to the object, this method
+	/// is called.
+	///
+	/// If this method returns true, the audio display takes the mouse capture and
+	/// stores a pointer to the AudioDisplayInteractionObject interface for the object
+	/// and redirects the next mouse event to that object.
+	///
+	/// If the object that has the mouse capture returns false from this method, the
+	/// capture is released and regular processing is done for the next event.
+	///
+	/// If the object does not have mouse capture and returns false from this method,
+	/// no capture is taken or released and regular processing is done for the next
+	/// mouse event.
+	virtual bool OnMouseEvent(wxMouseEvent &event) = 0;
+
+	/// @brief Destructor
+	///
+	/// Empty virtual destructor for the cases that need it.
+	virtual ~AudioDisplayInteractionObject() = default;
+};
+
 namespace {
 /// @brief Colourscheme-based UI colour provider
 ///
@@ -816,19 +847,22 @@ void AudioDisplay::OnPaint(wxPaintEvent&)
 		timeline->Paint(dc);
 }
 
-void AudioDisplay::PaintAudio(wxDC &dc, TimeRange updtime, wxRect updrect)
+void AudioDisplay::PaintAudio(wxDC &dc, const TimeRange updtime, const wxRect updrect)
 {
 	auto pt = begin(style_ranges), pe = end(style_ranges);
 	while (pt != pe && pt + 1 != pe && (pt + 1)->first < updtime.begin()) ++pt;
 
 	while (pt != pe && pt->first < updtime.end())
 	{
-		auto range_style = static_cast<AudioRenderingStyle>(pt->second);
-		int range_x1 = std::max(updrect.x, RelativeXFromTime(pt->first));
-		int range_x2 = (++pt == pe) ? updrect.x + updrect.width : RelativeXFromTime(pt->first);
+		const auto range_style = static_cast<AudioRenderingStyle>(pt->second);
+		const int range_x1 = std::max(updrect.x, RelativeXFromTime(pt->first));
+		int range_x2 = updrect.x + updrect.width;
+		if (++pt != pe)
+			range_x2 = std::min(range_x2, RelativeXFromTime(pt->first));
 
 		if (range_x2 > range_x1)
-			audio_renderer->Render(dc, wxPoint(range_x1, audio_top), range_x1 + scroll_left, range_x2 - range_x1, range_style);
+			audio_renderer->Render(dc, wxPoint(range_x1, audio_top),
+				range_x1 + scroll_left, range_x2 - range_x1, range_style);
 	}
 }
 

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A649D828-A399-4D81-ADEF-94CFDBA7847F}</ProjectGuid>
     <RootNamespace>boost</RootNamespace>
@@ -28,7 +28,20 @@
     </ClCompile>
   </ItemDefinitionGroup>
 
-  <Target Name="CopyHeaders" BeforeTargets="ClCompile">
+  <PropertyGroup>
+    <BuildGenerateSourcesTargets>
+      $(BuildGenerateSourcesTargets);
+      CopyBoostHeaders
+    </BuildGenerateSourcesTargets>
+  </PropertyGroup>
+  <!-- Have the target depend on the boost version.hpp file so it will usually
+       be skipped if the boost version hasn't changed since last build. -->
+  <Target
+    Name="CopyBoostHeaders"
+    Inputs="$(BoostPath)\libs\config\include\boost\version.hpp"
+    Outputs="$(AegisubSourceBase)include\boost\version.hpp"
+    >
+    <Message Importance="High" Text="Copy boost headers" />
     <!-- All this cruft is to work around that despite what the documentation
          claims, %(RecursiveDir) matches everything from the first * (not even
          **) until the last / -->
@@ -36,7 +49,7 @@
       <BoostLibraries Include="$([System.IO.Directory]::GetDirectories(&quot;$(BoostPath)\libs&quot;))" />
       <BoostIncludeDirs Include="%(BoostLibraries.Identity)\include\boost;$(BoostPath)\libs\numeric\conversion\include\boost" />
       <Headers Include="%(BoostIncludeDirs.Identity)\**\*.*" />
-   </ItemGroup>
+    </ItemGroup>
     <Copy
       SourceFiles="@(Headers)"
       DestinationFiles="@(Headers->'$(AegisubSourceBase)include\boost\%(RecursiveDir)%(Filename)%(Extension)')"
@@ -117,7 +130,6 @@
     <ClInclude Include="$(BoostPath)\libs\locale\src\util\numeric.hpp" />
     <ClInclude Include="$(BoostPath)\libs\locale\src\util\timezone.hpp" />
     <ClInclude Include="$(BoostPath)\libs\regex\src\internals.hpp" />
-    <ClInclude Include="$(BoostPath)\libs\system\src\local_free_on_destruction.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(BoostPath)\libs\locale\src\encoding\iconv_codepage.ipp" />

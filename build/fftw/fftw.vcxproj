@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Globals">
     <ProjectGuid>{EA3DCC95-2423-4EA0-A508-7A427B4C0594}</ProjectGuid>
     <RootNamespace>fftw</RootNamespace>
@@ -15,9 +15,6 @@
   </ImportGroup>
 
   <!-- Project specific configuration -->
-  <PropertyGroup>
-    <HeaderRoot>$(FftwSrcDir)\api</HeaderRoot>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>
@@ -39,7 +36,11 @@
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <OpenMPSupport>true</OpenMPSupport>
       <StructMemberAlignment>Default</StructMemberAlignment>
+      <InputRelativeSourceDir>$(FftwSrcDir)</InputRelativeSourceDir>
     </ClCompile>
+    <InstallHeader>
+      <HeaderRoot>$(FftwSrcDir)\api</HeaderRoot>
+    </InstallHeader>
   </ItemDefinitionGroup>
 
   <!-- Source files -->

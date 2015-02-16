@@ -26,12 +26,13 @@ template<typename T> struct type_name;
 
 AGI_DEFINE_TYPE_NAME(bool);
 AGI_DEFINE_TYPE_NAME(char);
-AGI_DEFINE_TYPE_NAME(double);
 AGI_DEFINE_TYPE_NAME(float);
+AGI_DEFINE_TYPE_NAME(double);
 AGI_DEFINE_TYPE_NAME(int);
-AGI_DEFINE_TYPE_NAME(long long);
 AGI_DEFINE_TYPE_NAME(long);
-AGI_DEFINE_TYPE_NAME(size_t);
+AGI_DEFINE_TYPE_NAME(long long);
+AGI_DEFINE_TYPE_NAME(unsigned int);
+AGI_DEFINE_TYPE_NAME(unsigned long);
 AGI_DEFINE_TYPE_NAME(unsigned long long);
 AGI_DEFINE_TYPE_NAME(void);
 

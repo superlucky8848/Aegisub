@@ -39,11 +39,11 @@ std::string AssKaraoke::Syllable::GetText(bool k_tag) const {
 	return ret;
 }
 
-AssKaraoke::AssKaraoke(AssDialogue *line, bool auto_split, bool normalize) {
+AssKaraoke::AssKaraoke(const AssDialogue *line, bool auto_split, bool normalize) {
 	if (line) SetLine(line, auto_split, normalize);
 }
 
-void AssKaraoke::SetLine(AssDialogue *line, bool auto_split, bool normalize) {
+void AssKaraoke::SetLine(const AssDialogue *line, bool auto_split, bool normalize) {
 	syls.clear();
 	Syllable syl;
 	syl.start_time = line->Start;
@@ -87,19 +87,22 @@ void AssKaraoke::SetLine(AssDialogue *line, bool auto_split, bool normalize) {
 	AnnounceSyllablesChanged();
 }
 
-void AssKaraoke::ParseSyllables(AssDialogue *line, Syllable &syl) {
+void AssKaraoke::ParseSyllables(const AssDialogue *line, Syllable &syl) {
 	for (auto& block : line->ParseTags()) {
 		std::string text = block->GetText();
 
-		if (dynamic_cast<AssDialogueBlockPlain*>(block.get()))
+		switch (block->GetType()) {
+		case AssBlockType::PLAIN:
 			syl.text += text;
-		else if (dynamic_cast<AssDialogueBlockComment*>(block.get()))
+			break;
+		case AssBlockType::COMMENT:
+		// drawings aren't override tags but they shouldn't show up in the
+		// stripped text so pretend they are
+		case AssBlockType::DRAWING:
 			syl.ovr_tags[syl.text.size()] += text;
-		else if (dynamic_cast<AssDialogueBlockDrawing*>(block.get()))
-			// drawings aren't override tags but they shouldn't show up in the
-			// stripped text so pretend they are
-			syl.ovr_tags[syl.text.size()] += text;
-		else if (AssDialogueBlockOverride *ovr = dynamic_cast<AssDialogueBlockOverride*>(block.get())) {
+			break;
+		case AssBlockType::OVERRIDE:
+			auto ovr = static_cast<AssDialogueBlockOverride*>(block.get());
 			bool in_tag = false;
 			for (auto& tag : ovr->Tags) {
 				if (tag.IsValid() && boost::istarts_with(tag.Name, "\\k")) {
@@ -126,7 +129,7 @@ void AssKaraoke::ParseSyllables(AssDialogue *line, Syllable &syl) {
 				else {
 					std::string& otext = syl.ovr_tags[syl.text.size()];
 					// Merge adjacent override tags
-					boost::trim_right_if(text, boost::is_any_of("}"));
+					boost::trim_right_if(text, [](char c) { return c == '}'; });
 					if (!in_tag)
 						otext += "{";
 
@@ -137,6 +140,7 @@ void AssKaraoke::ParseSyllables(AssDialogue *line, Syllable &syl) {
 
 			if (in_tag)
 				syl.ovr_tags[syl.text.size()] += "}";
+			break;
 		}
 	}
 

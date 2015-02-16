@@ -46,7 +46,6 @@
 #include "../main.h"
 #include "../options.h"
 #include "../project.h"
-#include "../preferences.h"
 #include "../utils.h"
 
 namespace {
@@ -160,10 +159,10 @@ struct app_language final : public Command {
 
 	void operator()(agi::Context *c) override {
 		// Get language
-		wxString new_language = wxGetApp().locale.PickLanguage();
-		if (!new_language) return;
+		auto new_language = wxGetApp().locale.PickLanguage();
+		if (new_language.empty()) return;
 
-		OPT_SET("App/Language")->SetString(from_wx(new_language));
+		OPT_SET("App/Language")->SetString(new_language);
 
 		// Ask to restart program
 		int result = wxMessageBox("Aegisub needs to be restarted so that the new language can be applied. Restart now?", "Restart Aegisub?", wxYES_NO | wxICON_QUESTION |  wxCENTER);
@@ -209,7 +208,7 @@ struct app_options final : public Command {
 
 	void operator()(agi::Context *c) override {
 		try {
-			while (Preferences(c->parent).ShowModal() < 0);
+			ShowPreferences(c->parent);
 		} catch (agi::Exception& e) {
 			LOG_E("config/init") << "Caught exception: " << e.GetMessage();
 		}

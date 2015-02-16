@@ -50,9 +50,11 @@ AssStyle::AssStyle() {
 	UpdateData();
 }
 
+AssEntryGroup AssStyle::Group() const { return AssEntryGroup::STYLE; }
+
 namespace {
 class parser {
-	boost::split_iterator<agi::StringRange::const_iterator> pos;
+	agi::split_iterator<agi::StringRange::const_iterator> pos;
 
 	std::string next_tok() {
 		if (pos.eof())

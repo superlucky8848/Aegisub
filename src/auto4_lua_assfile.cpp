@@ -123,6 +123,11 @@ namespace {
 			default:                      return AssFile::COMMIT_SCRIPTINFO;
 		}
 	}
+
+	template<typename T, typename U>
+	const T *check_cast_constptr(const U *value) {
+		return typeid(const T) == typeid(*value) ? static_cast<const T *>(value) : nullptr;
+	}
 }
 
 namespace Automation4 {
@@ -150,13 +155,13 @@ namespace Automation4 {
 
 		set_field(L, "section", e->GroupHeader());
 
-		if (auto info = dynamic_cast<const AssInfo*>(e)) {
+		if (auto info = check_cast_constptr<AssInfo>(e)) {
 			set_field(L, "raw", info->GetEntryData());
 			set_field(L, "key", info->Key());
 			set_field(L, "value", info->Value());
 			set_field(L, "class", "info");
 		}
-		else if (auto dia = dynamic_cast<const AssDialogue*>(e)) {
+		else if (auto dia = check_cast_constptr<AssDialogue>(e)) {
 			set_field(L, "raw", dia->GetEntryData());
 			set_field(L, "comment", dia->Comment);
 
@@ -187,7 +192,7 @@ namespace Automation4 {
 
 			set_field(L, "class", "dialogue");
 		}
-		else if (auto sty = dynamic_cast<const AssStyle*>(e)) {
+		else if (auto sty = check_cast_constptr<AssStyle>(e)) {
 			set_field(L, "raw", sty->GetEntryData());
 			set_field(L, "name", sty->name);
 
@@ -301,16 +306,19 @@ namespace Automation4 {
 
 			lua_getfield(L, -1, "extra");
 			auto type = lua_type(L, -1);
-			if (type != LUA_TNIL && type != LUA_TTABLE)
+			if (type == LUA_TTABLE) {
+				lua_for_each(L, [&] {
+					if (lua_type(L, -2) != LUA_TSTRING) return;
+					new_ids.push_back(ass->AddExtradata(
+						get_string_or_default(L, -2),
+						get_string_or_default(L, -1)));
+				});
+				std::sort(begin(new_ids), end(new_ids));
+				dia->ExtradataIds = std::move(new_ids);
+			}
+			else if (type != LUA_TNIL) {
 				error(L, "dialogue extradata must be a table");
-			lua_for_each(L, [&] {
-				if (lua_type(L, -2) != LUA_TSTRING) return;
-				new_ids.push_back(ass->AddExtradata(
-					get_string_or_default(L, -2),
-					get_string_or_default(L, -1)));
-			});
-			std::sort(begin(new_ids), end(new_ids));
-			dia->ExtradataIds = std::move(new_ids);
+			}
 		}
 		else {
 			error(L, "Found line with unknown class: %s", lclass.c_str());
@@ -352,6 +360,8 @@ namespace Automation4 {
 					lua_pushcclosure(L, closure_wrapper_v<&LuaAssFile::ObjectInsert, false>, 1);
 				else if (strcmp(idx, "append") == 0)
 					lua_pushcclosure(L, closure_wrapper_v<&LuaAssFile::ObjectAppend, false>, 1);
+				else if (strcmp(idx, "script_resolution") == 0)
+					lua_pushcclosure(L, closure_wrapper<&LuaAssFile::LuaGetScriptResolution>, 1);
 				else {
 					// idiot
 					lua_pop(L, 1);
@@ -616,7 +626,7 @@ namespace Automation4 {
 	int LuaAssFile::LuaParseKaraokeData(lua_State *L)
 	{
 		auto e = LuaToAssEntry(L, ass);
-		auto dia = dynamic_cast<AssDialogue*>(e.get());
+		auto dia = check_cast_constptr<AssDialogue>(e.get());
 		argcheck(L, !!dia, 1, "Subtitle line must be a dialogue line");
 
 		int idx = 0;
@@ -646,6 +656,15 @@ namespace Automation4 {
 		}
 
 		return 1;
+	}
+
+	int LuaAssFile::LuaGetScriptResolution(lua_State *L)
+	{
+		int w, h;
+		ass->GetResolution(w, h);
+		push_value(L, w);
+		push_value(L, h);
+		return 2;
 	}
 
 	void LuaAssFile::LuaSetUndoPoint(lua_State *L)
